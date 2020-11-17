@@ -8,22 +8,14 @@ import (
 	"github.com/textileio/powergate/ffs"
 )
 
-// ImportDeal contains information of an imported deal.
-type ImportDeal struct {
-	ProposalCid  *cid.Cid
-	MinerAddress string
-}
+type DealID uint64
 
-// ImportStorage imports deals existing in the Filecoin network. The StorageConfig
-// attached to this Cid will be the default one with HotStorage disabled.
-func (i *API) ImportStorage(payloadCid cid.Cid, pieceCid cid.Cid, deals []ImportDeal, opts ...ImportOption) error {
+func (i *API) ImportStorage(payloadCid cid.Cid, dealIDs []DealID) error {
 	i.lock.Lock()
 	defer i.lock.Unlock()
 
-	cfg := importConfig{}
-	for _, o := range opts {
-		o(&cfg)
-	}
+	// Create a storage config based on the default one but with
+	// hot storage disabled.
 	scfg := ffs.StorageConfig{
 		Repairable: false,
 		Hot: ffs.HotConfig{
@@ -31,6 +23,13 @@ func (i *API) ImportStorage(payloadCid cid.Cid, pieceCid cid.Cid, deals []Import
 		},
 		Cold: i.cfg.DefaultStorageConfig.Cold,
 	}
+
+	if len(dealIDs) == 0 {
+		return fmt.Errorf("deal ids list is empty")
+	}
+
+	// - Get Deal 1 information.
+	// - Iterate other deals and check are for the same PieceCid
 
 	filStorage := make([]ffs.FilStorage, len(deals))
 	for i, d := range deals {
